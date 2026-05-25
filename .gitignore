@@ -26,9 +26,6 @@ env/
 *.ipynb_checkpoints
 
 # Data & outputs
-data/raw/
-data/processed/
-outputs/
 *.zip
 *.parquet
 
