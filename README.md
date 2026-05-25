@@ -49,3 +49,10 @@ TRAIN:  python kaggle/scripts/run_pipeline.py
 | RandomForest | Random Forest |
 | GradientBoosting | Sklearn Gradient Boosting |
 | MLP | Multi-layer Perceptron |
+
+## Ket qua
+![kq](./outputs/all_models_actual_vs_predicted.png)
+![kq](./outputs/feature_importance_comparison.png)
+![kq](./outputs/model_mape_comparison.png)
+![kq](./outputs/shap_summary_best_model.png)
+![kq](./outputs/training_time_comparison.png)
