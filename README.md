@@ -36,7 +36,7 @@ Du doan gia ve va toi uu hoa doanh thu cho hang hang khong bang Machine Learning
 
 ```
 TRAIN:  python kaggle/scripts/run_pipeline.py
-            -> outputs/kaggle_models/  (6 trained models)
+            -> outputs/  (6 trained models)
 ```
 
 ## 6 Models
