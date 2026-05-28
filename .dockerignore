@@ -1,0 +1,20 @@
+# ── Never copy into images ────────────────────────────────────────────────────
+.git/
+.kaggle/
+.ipynb_checkpoints/
+.pytest_cache/
+__pycache__/
+**/__pycache__/
+
+# ── Docker tooling ────────────────────────────────────────────────────────────
+.dockerignore
+docker-compose*.yml
+.env
+.env.*
+
+# ── Build artifacts ──────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+*.egg-info/
+*.pyc
+*.pyo

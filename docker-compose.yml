@@ -1,0 +1,131 @@
+# Airline Revenue Optimizer -- Docker Compose
+#
+# Profiles:
+#   docker compose --profile dev up        -> dev mode (hot-reload Python, Vite)
+#   docker compose --profile prod up       -> production (built image, nginx)
+#
+# Workflow:
+#   1. cp .env.example .env   # edit if needed
+#   2. docker compose --profile dev up    # dev
+#      or
+#   2. docker compose --profile prod up   # prod
+#   3. docker compose --profile dev run --rm pipeline python kaggle/scripts/run_pipeline.py  # train models
+
+services:
+
+  # ── SQL Server Database ─────────────────────────────────────────────────────
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: airline-sqlserver
+    restart: unless-stopped
+    profiles:
+      - dev
+      - prod
+    environment:
+      ACCEPT_EULA: Y
+      MSSQL_SA_PASSWORD: ${DB_SA_PASSWORD:-AirlineDB!2024}
+      MSSQL_PID: Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-AirlineDB!2024}\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - airline-net
+
+  # ── Backend (FastAPI) ────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    container_name: airline-backend
+    restart: unless-stopped
+    profiles:
+      - dev
+      - prod
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source for hot-reload in dev
+      - ./backend:/app/backend:ro
+      # Outputs: model artifacts persist here across runs
+      - ./outputs:/app/outputs
+      # Raw input data (read-only)
+      - ./data/raw:/app/data/raw:ro
+      # Processed intermediate files (writable)
+      - ./data/processed:/app/data/processed
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DB_SERVER=sqlserver
+      - DB_NAME=${DB_NAME:-airline_db}
+      - DB_USER=${DB_USER:-sa}
+      - DB_PASSWORD=${DB_SA_PASSWORD:-AirlineDB!2024}
+      - MSSQL_SA_PASSWORD=${DB_SA_PASSWORD:-AirlineDB!2024}
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - airline-net
+
+  # ── Frontend dev (Vite hot-reload) ──────────────────────────────────────────
+  frontend-dev:
+    image: node:20-alpine
+    container_name: airline-frontend-dev
+    restart: unless-stopped
+    profiles:
+      - dev
+    command: >
+      sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    working_dir: /app
+    volumes:
+      # Mount frontend source; node_modules is created locally on first npm install
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - VITE_API_URL=http://host.docker.internal:8000
+      - VITE_PROXY_TARGET=http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - airline-net
+
+  # ── Frontend production (nginx) ─────────────────────────────────────────────
+  frontend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    container_name: airline-frontend-prod
+    restart: unless-stopped
+    profiles:
+      - prod
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - airline-net
+
+networks:
+  airline-net:
+    driver: bridge
+
+volumes:
+  sqlserver_data:
