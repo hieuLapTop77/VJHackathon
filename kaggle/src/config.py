@@ -14,7 +14,7 @@ USE_DIRECT_UPLOAD  = False
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_DIR       = os.environ.get("DATA_DIR",       os.path.join(PROJECT_ROOT, "data", "AI_hackathon"))
-OUTPUT_DIR     = os.environ.get("OUTPUT_DIR",     os.path.join(PROJECT_ROOT, "outputs", "kaggle_models"))
+OUTPUT_DIR     = os.environ.get("OUTPUT_DIR",     os.path.join(PROJECT_ROOT, "outputs"))
 DATA_PROCESSED = os.environ.get("DATA_PROCESSED", os.path.join(PROJECT_ROOT, "outputs", "processed"))
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
