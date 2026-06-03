@@ -20,3 +20,11 @@ days_bucket
 log_lead_time
 lf_velocity_interact
 expected_sold
+dep_month
+dep_quarter
+dep_day_of_month
+booking_month
+is_peak_season
+str_Gender
+agency_currency_enc
+occupancy_rate
