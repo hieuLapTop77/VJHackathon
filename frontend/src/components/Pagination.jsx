@@ -2,7 +2,7 @@ import { IconChevronLeft, IconChevronRight } from "./icons";
 
 export function Pagination({ page, total, pageSize, onChange }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  if (totalPages <= 1) return null;
+  if (total === 0) return null;
   const pages = [];
   const maxVisible = 5;
   let start = Math.max(1, page - Math.floor(maxVisible / 2));

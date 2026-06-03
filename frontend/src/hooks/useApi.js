@@ -1,33 +1,46 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { API_BASE_URL } from "../config";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
-
-export function useApi(endpoint, options = {}) {
+export function useApi(endpoint, options = {}, { immediate = true } = {}) {
   const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(immediate);
   const [error, setError]     = useState(null);
+  const abortRef = useRef(null);
 
   const fetch_ = useCallback(async (body) => {
+    // Cancel any in-flight request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}${endpoint}`, {
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method:  body ? "POST" : "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: body ? { "Content-Type": "application/json" } : {},
         body:    body ? JSON.stringify(body) : undefined,
+        signal:  controller.signal,
         ...options,
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
-      setData(await res.json());
+      const json = await res.json();
+      if (!controller.signal.aborted) setData(json);
     } catch (e) {
-      setError(e.message);
+      if (e.name !== "AbortError" && !controller.signal.aborted) {
+        setError(e.message);
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [endpoint]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { fetch_(); }, [fetch_]);
+  useEffect(() => {
+    if (immediate) fetch_();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [fetch_, immediate]);
+
   return { data, loading, error, refetch: fetch_ };
 }
 
-export { API };
+export { API_BASE_URL as API };

@@ -7,14 +7,14 @@ html, body, #root { height: 100%; }
   --color-background-primary:   #ffffff;
   --color-background-secondary: #f1f5f9;
   --color-background-tertiary:  #e2e8f0;
-  --color-background-info:      #e0f2fe;
+  --color-background-info:      #fff1f2; /* Light red/rose */
   --color-background-success:   #dcfce7;
   --color-background-warning:   #fef9c3;
   --color-background-danger:    #fee2e2;
 
   --color-text-primary:    #0f172a;
   --color-text-secondary:  #475569;
-  --color-text-info:      #0369a1;
+  --color-text-info:      #de1f26; /* Vietjet Red */
   --color-text-success:   #15803d;
   --color-text-warning:   #a16207;
   --color-text-danger:    #dc2626;
@@ -22,10 +22,12 @@ html, body, #root { height: 100%; }
   --color-border-tertiary:  rgba(0,0,0,0.08);
   --color-border-secondary: rgba(0,0,0,0.15);
   --color-border-primary:   rgba(0,0,0,0.25);
-  --color-border-info:     #38bdf8;
+  --color-border-info:     #fda4af; /* Red/rose border */
   --color-border-success:  #4ade80;
   --color-border-warning:  #facc15;
   --color-border-danger:   #f87171;
+
+  --color-brand-yellow:    #ffd200; /* Vietjet Yellow */
 
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Consolas", monospace;
@@ -40,14 +42,14 @@ html, body, #root { height: 100%; }
     --color-background-primary:   #0f172a;
     --color-background-secondary: #1e293b;
     --color-background-tertiary:  #020617;
-    --color-background-info:      #0c2d4a;
+    --color-background-info:      #3f0e0e; /* Dark red */
     --color-background-success:   #052e16;
     --color-background-warning:   #2d1b00;
     --color-background-danger:    #2d0a0a;
 
     --color-text-primary:    #f1f5f9;
     --color-text-secondary:  #94a3b8;
-    --color-text-info:       #38bdf8;
+    --color-text-info:       #ff4d4d; /* Bright red */
     --color-text-success:    #34d399;
     --color-text-warning:    #fcd34d;
     --color-text-danger:     #f87171;
@@ -55,6 +57,9 @@ html, body, #root { height: 100%; }
     --color-border-tertiary:  rgba(255,255,255,0.08);
     --color-border-secondary: rgba(255,255,255,0.15);
     --color-border-primary:   rgba(255,255,255,0.25);
+    --color-border-info:     #e11d48; /* Crimson border */
+    
+    --color-brand-yellow:    #ffe200; /* Vietjet Yellow in dark mode */
   }
 }
 

@@ -1,14 +1,15 @@
 import { IconTrendUp, IconTrendDown, IconTrendNeutral, IconTrendMid } from "./icons";
 
 const STATUS_CONFIG = {
-  high: { cls: "success", icon: <IconTrendUp />,     label: "Increase"  },
-  ok:   { cls: "info",    icon: <IconTrendNeutral />, label: "Optimize" },
-  mid:  { cls: "warning", icon: <IconTrendMid />,    label: "Follow up" },
-  low:  { cls: "danger",  icon: <IconTrendDown />,   label: "Increase"  },
+  high: { cls: "success", Icon: IconTrendUp,      label: "Increase"  },
+  ok:   { cls: "info",    Icon: IconTrendNeutral,  label: "Optimize" },
+  mid:  { cls: "warning", Icon: IconTrendMid,      label: "Follow up" },
+  low:  { cls: "danger",  Icon: IconTrendDown,     label: "Increase"  },
 };
 
 export function StatusBadge({ status }) {
   const c = STATUS_CONFIG[status] || STATUS_CONFIG.ok;
+  const Icon = c.Icon;
   return (
     <span style={{
       display: "inline-flex",
@@ -21,7 +22,7 @@ export function StatusBadge({ status }) {
       background: `var(--color-background-${c.cls})`,
       color: `var(--color-text-${c.cls})`,
     }}>
-      {c.icon}
+      <Icon />
       {c.label}
     </span>
   );

@@ -5,6 +5,7 @@
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^7.16.0",
     "recharts": "^2.10.0"
   },
   "devDependencies": {
@@ -12,7 +13,7 @@
     "vite": "^5.0.0"
   },
   "scripts": {
-    "dev":   "vite --port 3000",
+    "dev": "vite --port 3000",
     "build": "vite build",
     "preview": "vite preview"
   }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { useApi } from "./hooks/useApi";
 import { Sidebar } from "./components/Sidebar";
 import { OverviewPage } from "./pages/OverviewPage";
@@ -6,17 +7,24 @@ import { OptimizerPage } from "./pages/OptimizerPage";
 import { SimulatorPage } from "./pages/SimulatorPage";
 import { RoutesPage } from "./pages/RoutesPage";
 import { UploadPage } from "./pages/UploadPage";
-import { IconPlane } from "./components/icons";
+import { DashboardPage } from "./pages/DashboardPage";
+import { IconPlane, IconBot, IconTrendUp, IconTrendDown } from "./components/icons";
+import { VietjetLogo } from "./components/VietjetLogo";
 
 export default function App() {
-  const [page, setPage]           = useState("overview");
+  const navigate = useNavigate();
   const [selectedFlight, setFlight] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const { data: health }          = useApi("/health");
   const { data: modelsData }      = useApi("/models");
 
   function handleSelectFlight(f) {
     setFlight(f);
-    setPage("optimizer");
+    navigate("/optimizer");
+  }
+
+  function handleApplySuccess() {
+    setRefreshKey(k => k + 1);
   }
 
   const bestModel = modelsData?.models?.find(m => m.best);
@@ -29,65 +37,108 @@ export default function App() {
       background: "var(--color-background-tertiary)",
       fontFamily: "var(--font-sans)", overflow: "hidden",
     }}>
-      <Sidebar active={page} onNav={setPage} />
+      <Sidebar />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {/* Top bar */}
+        {/* Top bar (Web Header Redesign) */}
         <div style={{
-          height: 40,
-          borderBottom: "0.5px solid var(--color-border-tertiary)",
+          height: 56,
+          borderBottom: "1px solid var(--color-border-tertiary)",
           display: "flex", alignItems: "center",
-          padding: "0 16px", gap: 8, flexShrink: 0,
+          padding: "0 20px", gap: 14, flexShrink: 0,
           background: "var(--color-background-secondary)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ color: "var(--color-text-info)", display: "flex" }}><IconPlane /></span>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>Airline Revenue</span>
+          {/* Logo Area */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => navigate("/")}>
+            <VietjetLogo height={24} color="var(--color-text-info)" />
+            <div style={{
+              height: 20, width: "1px", background: "var(--color-border-tertiary)", margin: "0 6px"
+            }} />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: "var(--color-text-primary)", letterSpacing: "0.2px" }}>Revenue Intelligence</span>
+              <span style={{ fontSize: 8, color: "var(--color-text-secondary)", fontWeight: 600, marginTop: -2 }}>OPTIMIZATION SYSTEM</span>
+            </div>
           </div>
-          <span style={{ color: "var(--color-border-secondary)" }}>|</span>
-          <span style={{ fontSize: 11, color: "var(--color-text-secondary)" }}>
-            {modelsData ? `6 models | Best: ${bestModel?.name || "?"}` : "Dang tai..."}
-          </span>
+
           <div style={{ flex: 1 }} />
-          {mapeLabel && (
-            <span style={{
-              fontSize: 11,
-              background: "var(--color-background-success)",
-              border: "0.5px solid var(--color-border-success)",
-              borderRadius: 6, padding: "2px 8px",
-              color: "var(--color-text-success)",
-            }}>
-              {mapeLabel}
-            </span>
+
+          {/* Model Status Badges */}
+          {bestModel && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {/* Best Model Name */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6,
+                background: "var(--color-background-info)",
+                border: "1px solid var(--color-border-info)",
+                borderRadius: 20, padding: "4px 10px",
+                color: "var(--color-text-info)", fontSize: 11, fontWeight: 700
+              }}>
+                <IconBot />
+                <span>AI Best: {bestModel.name}</span>
+              </div>
+
+              {/* MAPE Performance */}
+              {mapeLabel && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "var(--color-background-success)",
+                  border: "0.5px solid var(--color-border-success)",
+                  borderRadius: 20, padding: "4px 10px",
+                  color: "var(--color-text-success)", fontSize: 11, fontWeight: 600
+                }}>
+                  <IconTrendDown />
+                  <span>MAPE: {bestModel.mape.toFixed(1)}%</span>
+                </div>
+              )}
+
+              {/* R2 Indicator */}
+              {r2Label && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "var(--color-background-secondary)",
+                  border: "0.5px solid var(--color-border-tertiary)",
+                  borderRadius: 20, padding: "4px 10px",
+                  color: "var(--color-text-primary)", fontSize: 11, fontWeight: 600
+                }}>
+                  <IconTrendUp />
+                  <span>R²: {bestModel.r2.toFixed(3)}</span>
+                </div>
+              )}
+            </div>
           )}
-          {r2Label && (
-            <span style={{
-              fontSize: 11,
-              background: "var(--color-background-secondary)",
-              border: "0.5px solid var(--color-border-tertiary)",
-              borderRadius: 6, padding: "2px 8px",
-              color: "var(--color-text-info)",
-            }}>
-              {r2Label}
-            </span>
-          )}
-          <span style={{
-            fontSize: 11, padding: "2px 8px", borderRadius: 6, border: "0.5px solid",
-            borderColor: health?.status === "ok" ? "var(--color-border-success)" : "var(--color-border-danger)",
+
+          {/* Server Connection Status */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
             background: health?.status === "ok" ? "var(--color-background-success)" : "var(--color-background-danger)",
+            border: "0.5px solid",
+            borderColor: health?.status === "ok" ? "var(--color-border-success)" : "var(--color-border-danger)",
+            borderRadius: 20, padding: "4px 12px",
             color: health?.status === "ok" ? "var(--color-text-success)" : "var(--color-text-danger)",
+            fontSize: 11, fontWeight: 600
           }}>
-            {health?.status === "ok" ? "● Connected" : "○ Offline"}
-          </span>
+            <span style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: health?.status === "ok" ? "var(--color-text-success)" : "var(--color-text-danger)",
+              display: "inline-block"
+            }} />
+            <span>{health?.status === "ok" ? "Connected" : "Offline"}</span>
+          </div>
         </div>
 
         {/* Page content */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex" }}>
-          {page === "overview"  && <OverviewPage  onSelectFlight={handleSelectFlight} />}
-          {page === "optimizer" && <OptimizerPage selectedFlight={selectedFlight} />}
-          {page === "simulator" && <SimulatorPage />}
-          {page === "routes"    && <RoutesPage />}
-          {page === "upload"   && <UploadPage onGoToOverview={() => setPage("overview")} />}
+          <Routes>
+            <Route path="/" element={<DashboardPage />} />
+            <Route path="/overview" element={<OverviewPage onSelectFlight={handleSelectFlight} key={refreshKey} />} />
+            <Route path="/optimizer" element={<OptimizerPage selectedFlight={selectedFlight} onApplySuccess={handleApplySuccess} />} />
+            <Route path="/simulator" element={<SimulatorPage />} />
+            <Route path="/routes" element={<RoutesPage />} />
+            <Route path="/upload" element={<UploadPage onGoToOverview={() => navigate("/overview")} />} />
+          </Routes>
         </div>
       </div>
     </div>
