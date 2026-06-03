@@ -1,16 +1,3 @@
-# Airline Revenue Optimizer -- Docker Compose
-#
-# Profiles:
-#   docker compose --profile dev up        -> dev mode (hot-reload Python, Vite)
-#   docker compose --profile prod up       -> production (built image, nginx)
-#
-# Workflow:
-#   1. cp .env.example .env   # edit if needed
-#   2. docker compose --profile dev up    # dev
-#      or
-#   2. docker compose --profile prod up   # prod
-#   3. docker compose --profile dev run --rm pipeline python kaggle/scripts/run_pipeline.py  # train models
-
 services:
 
   # ── SQL Server Database ─────────────────────────────────────────────────────
@@ -97,7 +84,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
-      - VITE_API_URL=http://host.docker.internal:8000
+      - VITE_API_URL=http://localhost:8000
       - VITE_PROXY_TARGET=http://backend:8000
     depends_on:
       backend:

@@ -7,7 +7,6 @@ __pycache__/
 # Distribution / packaging
 dist/
 build/
-node_modules/
 *.egg-info/
 *.egg
 
@@ -26,10 +25,17 @@ env/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# Dependency & Temporary folders
+node_modules/
+catboost_info/
+scratch/
+artifacts/
+
 # Data & outputs
+data/
+outputs/
 *.zip
 *.parquet
-outputs/results
 
 # Models (download separately)
 *.pkl
