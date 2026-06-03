@@ -27,6 +27,7 @@ MIN_PRICE     = 50_000
 
 # ── Feature Engineering (Option 1 — NO LEAKAGE) ───────────────────────────────
 FEATURE_COLS = [
+    # ── Original features ──
     "lead_time_days", "booking_velocity_3d", "booking_velocity_7d",
     "LF_by_date", "LF_by_fare", "capacity",
     "Weekday", "IsHoliday", "is_oneway",
@@ -35,6 +36,11 @@ FEATURE_COLS = [
     "urgency_score", "velocity_ratio", "seats_remaining",
     "is_weekend", "days_bucket",
     "log_lead_time", "lf_velocity_interact", "expected_sold",
+    # ── NEW: Time-based features ──
+    "dep_month", "dep_quarter", "dep_day_of_month",
+    "booking_month", "is_peak_season",
+    # ── NEW: Data-derived features ──
+    "str_Gender", "agency_currency_enc", "occupancy_rate",
 ]
 
 TARGET_COL = "ticket_price"

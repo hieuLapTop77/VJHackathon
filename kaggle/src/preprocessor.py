@@ -98,7 +98,45 @@ def create_derived_features(df: pd.DataFrame) -> pd.DataFrame:
         ).round(4)
 
     if "capacity" in df.columns and "LF_by_date" in df.columns:
-        df["expected_sold"] = (df["capacity"] * df["LF_by_date"]).round(0)
+        df["expected_sold"] = (
+            df["capacity"] * df["LF_by_date"]
+        ).round(0)
+
+    return df
+
+
+def create_time_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Extract time-based features from date columns."""
+    # Departure date features
+    for date_col in ["departure_date", "booking_date"]:
+        if date_col in df.columns:
+            dt = pd.to_datetime(df[date_col], errors="coerce")
+            if date_col == "departure_date":
+                df["dep_month"] = dt.dt.month.fillna(0).astype(int)
+                df["dep_quarter"] = dt.dt.quarter.fillna(0).astype(int)
+                df["dep_day_of_month"] = dt.dt.day.fillna(0).astype(int)
+                # Peak season: Tet (Jan-Feb), Summer (Jun-Aug), National holidays (Apr-May)
+                month = dt.dt.month
+                df["is_peak_season"] = month.isin([1, 2, 6, 7, 8]).astype(int)
+            elif date_col == "booking_date":
+                df["booking_month"] = dt.dt.month.fillna(0).astype(int)
+
+    print(f"[preprocess] Time features created: dep_month, dep_quarter, dep_day_of_month, booking_month, is_peak_season")
+    return df
+
+
+def create_data_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Create features from previously unused columns."""
+    # Occupancy rate = seats_sold / capacity
+    if "seats_sold" in df.columns and "capacity" in df.columns:
+        df["occupancy_rate"] = (
+            df["seats_sold"] / df["capacity"].replace(0, 1)
+        ).clip(0, 1).round(4)
+        print(f"[preprocess] Created occupancy_rate from seats_sold/capacity")
+
+    # str_Gender is already numeric (0/1) from rename_columns
+    if "str_Gender" in df.columns:
+        print(f"[preprocess] str_Gender included as feature")
 
     return df
 
@@ -159,13 +197,19 @@ def preprocess(df: pd.DataFrame) -> tuple[pd.DataFrame, list]:
     df = df.drop_duplicates()
     print(f"[preprocess] Dedup: {len(df):,} rows (removed {original - len(df):,})")
 
-    print("\n[5] Creating derived features...")
+    print("\n[5] Creating time-based features...")
+    df = create_time_features(df)
+
+    print("\n[6] Creating data-derived features...")
+    df = create_data_features(df)
+
+    print("\n[7] Creating derived features...")
     df = create_derived_features(df)
 
-    print("\n[6] Dropping leakage features...")
+    print("\n[8] Dropping leakage features...")
     df = drop_leakage_features(df)
 
-    available_features = [c for c in FEATURE_COLS if c in df.columns]
+    available_features = [c for c in FEATURE_COLS if c in df.columns or c.endswith("_enc")]
     verify_no_leakage(available_features)
     print(f"[preprocess] Features available: {len(available_features)}")
     print(f"[preprocess] Remaining rows: {len(df):,}")

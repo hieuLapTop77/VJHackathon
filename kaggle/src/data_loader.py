@@ -32,7 +32,16 @@ def find_csv_files(directory: str) -> list:
 
 def download_from_gdrive() -> str:
     print("[data_loader] Downloading data from Google Drive...")
-    zip_path = "/kaggle/working/data.zip"
+    
+    # Determine working/data directory dynamically to handle cross-platform (local Windows vs Kaggle environment)
+    if os.path.exists("/kaggle/working"):
+        working_dir = "/kaggle/working"
+    else:
+        working_dir = os.path.join(_PROJECT_ROOT, "data")
+        
+    os.makedirs(working_dir, exist_ok=True)
+    zip_path = os.path.join(working_dir, "data.zip")
+    
     url = f"https://drive.google.com/uc?id={GDRIVE_FILE_ID}"
     gdown.download(url, zip_path, quiet=False)
 
@@ -41,7 +50,7 @@ def download_from_gdrive() -> str:
 
     print("[data_loader] Extracting...")
     with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall("/kaggle/working/")
+        z.extractall(working_dir)
         files = z.namelist()
         print(f"[data_loader] Extracted {len(files)} files:")
         for f in files[:10]:
@@ -49,7 +58,7 @@ def download_from_gdrive() -> str:
         if len(files) > 10:
             print(f"         ... and {len(files) - 10} more")
 
-    return "/kaggle/working/AI_hackathon"
+    return os.path.join(working_dir, "AI_hackathon")
 
 
 def load_all_csv(directory: str) -> pd.DataFrame:
