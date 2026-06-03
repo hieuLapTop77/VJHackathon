@@ -8,10 +8,28 @@ import time
 import logging
 import pandas as pd
 import pyodbc
+import re
 
 logger = logging.getLogger(__name__)
 
+
+def _validate_identifier(name: str) -> str:
+    """Validate a SQL identifier (database/table name) to prevent SQL injection."""
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+        raise ValueError(f"Invalid SQL identifier: {name}")
+    return name
+
+
 _DRIVER = "ODBC Driver 18 for SQL Server"
+try:
+    _installed_drivers = pyodbc.drivers()
+    for _d in ["ODBC Driver 18 for SQL Server", "ODBC Driver 17 for SQL Server", "SQL Server"]:
+        if _d in _installed_drivers:
+            _DRIVER = _d
+            break
+except Exception:
+    pass
+
 
 def _get_conn_str(server: str, database: str, user: str, password: str) -> str:
     return (
@@ -60,8 +78,9 @@ def init_db():
         with pyodbc.connect(master_conn_str, timeout=10) as conn:
             conn.autocommit = True
             cursor = conn.cursor()
-            cursor.execute(f"IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'{database}') CREATE DATABASE {database}")
-            cursor.execute(f"USE {database}")
+            safe_db = _validate_identifier(database)
+            cursor.execute(f"IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = N'{safe_db}') CREATE DATABASE [{safe_db}]")
+            cursor.execute(f"USE [{safe_db}]")
             logger.info(f"[db] Database '{database}' ready")
     except pyodbc.Error as ex:
         logger.error(f"[db] Failed to create database: {ex}")
@@ -106,7 +125,7 @@ def init_db():
     IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'IX_flights_flight_date')
     CREATE INDEX IX_flights_flight_date ON flights(flight_date);
     """)
-    cursor.commit()
+    # autocommit=True on connection handles commits
     cursor.close()
     conn.close()
     logger.info("[db] Table 'flights' ready")
@@ -118,6 +137,8 @@ def load_flights(
     flight_date: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    flight_no: str | None = None,
+    fare_family: str | None = None,
     sort_by: str = "flight_date",
     sort_dir: str = "asc",
     page: int = 1,
@@ -155,6 +176,14 @@ def load_flights(
         where_clauses.append("flight_date <= ?")
         params.append(date_to)
 
+    if flight_no:
+        where_clauses.append("flight_no LIKE ?")
+        params.append(f"%{flight_no}%")
+
+    if fare_family:
+        where_clauses.append("fare_family = ?")
+        params.append(fare_family)
+
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
     allowed_sorts = {
@@ -182,7 +211,7 @@ def load_flights(
         fare_family
     FROM flights
     WHERE {where_sql}
-    ORDER BY {order_col} {order_dir}
+    ORDER BY {order_col} {order_dir}, id ASC
     OFFSET {offset} ROWS FETCH NEXT {page_size} ROWS ONLY
     """
 
@@ -204,6 +233,8 @@ def count_flights(
     flight_date: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    flight_no: str | None = None,
+    fare_family: str | None = None,
 ) -> int:
     """
     Count total flights matching filters (for pagination).
@@ -235,6 +266,14 @@ def count_flights(
         if date_to:
             where_clauses.append("flight_date <= ?")
             params.append(date_to)
+
+        if flight_no:
+            where_clauses.append("flight_no LIKE ?")
+            params.append(f"%{flight_no}%")
+
+        if fare_family:
+            where_clauses.append("fare_family = ?")
+            params.append(fare_family)
 
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
@@ -537,11 +576,32 @@ def _to_date(val) -> str:
         return pd.Timestamp.today().strftime("%Y-%m-%d")
 
 
-def get_routes() -> list[dict]:
-    """Return aggregated route stats from the DB. Returns empty list if DB is empty."""
+def get_routes(flight_date: str | None = None, dep: str | None = None, arr: str | None = None) -> list[dict]:
+    """Return aggregated route stats from the DB. Returns empty list if DB is empty.
+    
+    Args:
+        flight_date: Optional YYYY-MM-DD string to filter by specific date.
+        dep: Optional departure airport code.
+        arr: Optional arrival airport code.
+    """
     try:
         conn = _connect()
-        rows = pd.read_sql("""
+        where_clauses = []
+        params = []
+        
+        if flight_date:
+            where_clauses.append("CAST(flight_date AS DATE) = ?")
+            params.append(flight_date)
+        if dep:
+            where_clauses.append("str_Dep = ?")
+            params.append(dep)
+        if arr:
+            where_clauses.append("str_Arr = ?")
+            params.append(arr)
+        
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        
+        rows = pd.read_sql(f"""
             SELECT
                 route,
                 str_Dep,
@@ -552,9 +612,10 @@ def get_routes() -> list[dict]:
                 MIN(mny_GL_Charges_Total) AS min_price,
                 MAX(mny_GL_Charges_Total) AS max_price
             FROM flights
+            WHERE {where_sql}
             GROUP BY route, str_Dep, str_Arr
             ORDER BY count DESC
-            """, conn)
+            """, conn, params=params)
         conn.close()
         return rows.to_dict(orient="records")
     except Exception:
@@ -573,6 +634,27 @@ def get_distinct_routes() -> list[dict]:
         return rows.to_dict(orient="records")
     except Exception:
         return []
+
+
+def get_distinct_airports() -> dict:
+    """Return distinct departure and arrival airports."""
+    try:
+        conn = _connect()
+        dep_rows = pd.read_sql(
+            "SELECT DISTINCT str_Dep FROM flights WHERE str_Dep IS NOT NULL ORDER BY str_Dep",
+            conn
+        )
+        arr_rows = pd.read_sql(
+            "SELECT DISTINCT str_Arr FROM flights WHERE str_Arr IS NOT NULL ORDER BY str_Arr",
+            conn
+        )
+        conn.close()
+        return {
+            "departures": dep_rows["str_Dep"].tolist(),
+            "arrivals": arr_rows["str_Arr"].tolist(),
+        }
+    except Exception:
+        return {"departures": [], "arrivals": []}
 
 
 def load_flight_by_id(flight_id: int) -> dict | None:
@@ -610,6 +692,7 @@ def load_flights_by_date(date: str, limit: int = 100) -> pd.DataFrame:
     """Load flights for a specific date, fallback to top N recent flights."""
     try:
         conn = _connect()
+        limit = int(limit)  # Ensure limit is integer to prevent SQL injection
         df = pd.read_sql(f"""
             SELECT TOP {limit}
                 id, flight_no, flight_date, str_Dep, str_Arr, str_Fare_Category, route,
@@ -635,6 +718,7 @@ def load_recent_flights(limit: int = 100) -> pd.DataFrame:
     """Load most recent flights when no date match found."""
     try:
         conn = _connect()
+        limit = int(limit)  # Ensure limit is integer to prevent SQL injection
         df = pd.read_sql(f"""
             SELECT TOP {limit}
                 id, flight_no, flight_date, str_Dep, str_Arr, str_Fare_Category, route,
@@ -675,6 +759,26 @@ def update_flight_price(flight_id: int, new_price: float) -> bool:
         return False
 
 
+def update_flight_price_and_lf(flight_id: int, new_price: float, new_lf: float) -> bool:
+    """Update price and load factor for a single flight."""
+    try:
+        conn = _connect()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE flights
+            SET mny_GL_Charges_Total = ?, LF_by_date = ?, LF_by_fare = ?, updated_at = GETDATE()
+            WHERE id = ?
+        """, (new_price, new_lf, new_lf, flight_id))
+        conn.commit()
+        affected = cursor.rowcount
+        cursor.close()
+        conn.close()
+        return affected > 0
+    except Exception as ex:
+        logger.error(f"[db] update_flight_price_and_lf failed: {ex}")
+        return False
+
+
 def bulk_update_flight_prices(updates: list[dict]) -> dict:
     """
     Bulk update flight prices. updates = [{"id": int, "price": float}, ...]
@@ -693,3 +797,25 @@ def bulk_update_flight_prices(updates: list[dict]) -> dict:
         except Exception:
             failed += 1
     return {"updated": updated, "failed": failed}
+
+
+def bulk_update_flight_details(updates: list[dict]) -> dict:
+    """
+    Bulk update flight details (price & load factor). updates = [{"id": int, "price": float, "lf": float}, ...]
+    Returns {"updated": N, "failed": M}.
+    """
+    updated = 0
+    failed = 0
+    for item in updates:
+        try:
+            fid = int(item["id"])
+            price = float(item["price"])
+            lf = float(item["lf"])
+            if update_flight_price_and_lf(fid, price, lf):
+                updated += 1
+            else:
+                failed += 1
+        except Exception:
+            failed += 1
+    return {"updated": updated, "failed": failed}
+
